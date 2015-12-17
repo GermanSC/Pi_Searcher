@@ -9,11 +9,17 @@
  ============================================================================
  */
 
+#include <fcntl.h>
 #include <getopt.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/mman.h>
+
+//#define FILE_LENGTH 100000002
+#define FILE_LENGTH 2002
 
 void printHelp(char* Name)
 {
@@ -66,11 +72,34 @@ int getOptions(int argcount, char *arglist[], int* thread_num, int* n_offset)
 	return optind;
 }
 
+void * loadFileToMem( void )
+{
+	void* file_memory;
+	int fd = -1;
+
+	fd = open("pitest.txt",O_RDONLY);
+	if(fd == -1)
+	{
+		return (void *)-1;
+	}
+	/* Create the memory mapping. */
+	file_memory = mmap (0, FILE_LENGTH, PROT_READ, MAP_SHARED, fd, 0);
+	close (fd);
+	if(file_memory == (void *) -1)
+	{
+		return (void *) -1;
+	}
+
+	return file_memory;
+}
+
 int main(int argc, char *argv[])
 {
 	int N = 10;
 	int T = 4;
 	int index = 1;
+	int ctrl = 0;
+	void* fm = NULL;
 
 	struct timespec ts_in,ts_out;
 
@@ -84,13 +113,33 @@ int main(int argc, char *argv[])
 
 	/*	Inicio	*/
 	printf("\nPi Searcher:\n------------\n\n");
-	printf("Configuración: N = %d | T = %d\n",N,T);
+	printf("Configuración: N = %d | T = %d\n\n Cargando archivo...",N,T);
+
+	fm = loadFileToMem();
+	if(ctrl != 0)
+	{
+		printf("ERROR");
+		return -1;
+	}
+	printf("Listo:\n");
 
 	clock_gettime(CLOCK_MONOTONIC,&ts_out);
-	printf("Tiempo de inicio: %u.%09u segundos\n",
+	printf("\nTiempo de inicio: %u.%09u segundos\n",
 			(unsigned int)(ts_out.tv_sec - ts_in.tv_sec),
 			(unsigned int)(ts_out.tv_nsec - ts_in.tv_nsec));
 
+	/*	FIXME - CONTINUAR ACA	*/
+	char * ptr;
 
+	ptr = strstr((char *)fm,"594553");
+
+	printf("Lei: %d\n", ptr - (char *)fm);
+
+	ctrl = munmap (fm, FILE_LENGTH);
+	if (ctrl == -1)
+	{
+		printf("Error al desmontar la memoria\n");
+		return -1;
+	}
 	return 0;
 }
