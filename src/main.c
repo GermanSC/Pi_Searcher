@@ -9,9 +9,11 @@
  ============================================================================
  */
 
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
+#include <unistd.h>
+#include <time.h>
 
 void printHelp(char* Name)
 {
@@ -70,14 +72,25 @@ int main(int argc, char *argv[])
 	int T = 4;
 	int index = 1;
 
-	printf("\nPi Searcher:\n------------\n\n");
+	struct timespec ts_in,ts_out;
+
+	clock_gettime(CLOCK_MONOTONIC,&ts_in);
 
 	index = getOptions(argc, argv, &T, &N);
 	if(index == -1)
 	{
 		return -1;
 	}
+
+	/*	Inicio	*/
+	printf("\nPi Searcher:\n------------\n\n");
 	printf("Configuración: N = %d | T = %d\n",N,T);
 
-	return EXIT_SUCCESS;
+	clock_gettime(CLOCK_MONOTONIC,&ts_out);
+	printf("Tiempo de inicio: %u.%09u segundos\n",
+			(unsigned int)(ts_out.tv_sec - ts_in.tv_sec),
+			(unsigned int)(ts_out.tv_nsec - ts_in.tv_nsec));
+
+
+	return 0;
 }
