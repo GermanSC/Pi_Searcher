@@ -35,10 +35,17 @@ void printHelp(char* Name)
 
 }
 
-int getOptions(int argcount, char *arglist[], int* thread_num, int* n_offset)
+void printDiffTime(struct timespec tsin, struct timespec tsout)
+{
+	printf("\nTiempo de inicio: %u.%09u segundos\n\n",
+				(unsigned int)(tsout.tv_sec - tsin.tv_sec),
+				(unsigned int)(tsout.tv_nsec - tsin.tv_nsec));
+}
+
+int getOptions(int argcount, char *arglist[], unsigned int* thread_num, unsigned int* n_offset)
 {
 	int opt_sig;
-	int temp = 0;
+	signed int temp = 0;
 	const char* const opc_cort = "hT:N:";
 
 	do
@@ -58,7 +65,7 @@ int getOptions(int argcount, char *arglist[], int* thread_num, int* n_offset)
 				printf("Valor de N inválido, se utilizará N = 10.\n");
 				break;
 			}
-			*n_offset = temp;
+			*n_offset = (unsigned int)temp;
 			break;
 		case 'T':
 			temp = atoi(optarg);
@@ -67,7 +74,7 @@ int getOptions(int argcount, char *arglist[], int* thread_num, int* n_offset)
 				printf("Valor de T inválido, se utilizará T = 4.\n");
 				break;
 			}
-			*thread_num = temp;
+			*thread_num = (unsigned int)temp;
 			break;
 		case '?':
 			printHelp(arglist[0]);
@@ -108,9 +115,18 @@ void * loadFileToMem( void )
 
 int printPos(unsigned int order, unsigned int pos, unsigned int nums, unsigned int len, void* file_mem)
 {
-	printf("Aparición %d: ... %.*s < %.*s > %.*s ... @ POS: %d\n",
-			order,
-			nums, (char *)(file_mem+pos-nums),
+	printf("Aparición %d: ",order);
+
+	if(nums > pos)
+	{
+		printf("%.*s ", pos, (char *)(file_mem));
+
+	}else{
+
+	printf("... %.*s ", nums, (char *)(file_mem + pos - nums));
+
+	}
+	printf("< %.*s > %.*s ... @ POS: %d\n",
 			len, (char *)(file_mem + pos),
 			nums, (char *)(file_mem+pos+len),
 			pos);
@@ -118,16 +134,41 @@ int printPos(unsigned int order, unsigned int pos, unsigned int nums, unsigned i
 	return 0;
 }
 
+void lookFor(char * str, void* file_mem)
+{
+	signed	 int cmp;
+	unsigned int i;
+	unsigned int cnt;
+	unsigned int arg_len = strlen(str);
+
+	while(arg_len > 0)
+	{
+		cnt = 0;
+		cmp = 0;
+		i = 0;
+		while( i != (FILE_LENGTH - 1) )
+		{
+			cmp = strncmp(str, (char*) file_mem+i, arg_len);
+			if(cmp == 0)
+			{
+				cnt++;
+			}
+			i++;
+		}
+		printf("Apariciones de %.*s: %u \n", arg_len, str, cnt);
+		arg_len--;
+	}
+	printf("\n");
+}
+
+
 int main(int argc, char *argv[])
 {
 	/*	Variables y valores por defecto	*/
-	int ctrl	= 0;
-	int N		= 10;
-	int T		= 4;
-	int index	= 1;
-	int arg_len = 0;
-	int i		= 0;
-	int cnt		= 0;
+	signed	 int index		= 1;
+	unsigned int ctrl		= 0;
+	unsigned int N			= 10;
+	unsigned int T			= 4;
 
 	/*	Punteros	*/
 	void* fm	= NULL;
@@ -139,17 +180,18 @@ int main(int argc, char *argv[])
 	clock_gettime(CLOCK_MONOTONIC,&ts_in);
 
 	index = getOptions(argc, argv, &T, &N);
-	if(index == -1)
+	if(index == -1)	/*	ERROR DE OPCIONES	*/
 	{
 		return -1;
 	}
-	arg_len = strlen(argv[index]);
+
 	/*	Inicio	*/
-	printf("\nPi Searcher:\n--------------\n");
-	printf("N = %d | T = %d\n--------------\n\n	Cargando archivo...",N,T);
+	printf( "\nPi Searcher:\n--------------\n"
+			"N = %d | T = %d\n--------------\n"
+			"\nCargando archivo...",N,T);
 
 	fm = loadFileToMem();
-	if(ctrl != 0)
+	if(ctrl != 0)	/*	ERROR DE CARGA	*/
 	{
 		printf("ERROR");
 		return -1;
@@ -157,27 +199,11 @@ int main(int argc, char *argv[])
 	printf("Listo:\n");
 
 	clock_gettime(CLOCK_MONOTONIC,&ts_out);
-	printf("\nTiempo de inicio: %u.%09u segundos\n\n",
-			(unsigned int)(ts_out.tv_sec - ts_in.tv_sec),
-			(unsigned int)(ts_out.tv_nsec - ts_in.tv_nsec));
+	printDiffTime(ts_in, ts_out);
 
+	lookFor(argv[index],fm);
 
-	while( i != (FILE_LENGTH - arg_len) )
-	{
-		ctrl = strncmp(argv[index], (char*) fm+i, arg_len);
-		if(ctrl == 0)
-		{
-			cnt++;
-			printPos(cnt, i, N, arg_len, fm);
-		}
-		i++;
-	}
-
-	printf("\nEncontré: %d apariciones. El valor de i es %d \n", cnt, i);
-
-
-
-	/*--	Fin de Programa		--*/
+	/*----	Fin de Programa		----*/
 	ctrl = munmap (fm, FILE_LENGTH);
 	if (ctrl == -1)
 	{
