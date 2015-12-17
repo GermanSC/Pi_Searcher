@@ -38,6 +38,7 @@ void printHelp(char* Name)
 int getOptions(int argcount, char *arglist[], int* thread_num, int* n_offset)
 {
 	int opt_sig;
+	int temp = 0;
 	const char* const opc_cort = "hT:N:";
 
 	do
@@ -51,10 +52,22 @@ int getOptions(int argcount, char *arglist[], int* thread_num, int* n_offset)
 			return -1;
 			break;
 		case 'N':
-			*n_offset = atoi(optarg);
+			temp = atoi(optarg);
+			if(temp < 1)
+			{
+				printf("Valor de N inválido, se utilizará N = 10.\n");
+				break;
+			}
+			*n_offset = temp;
 			break;
 		case 'T':
-			*thread_num = atoi(optarg);
+			temp = atoi(optarg);
+			if(temp < 1)
+			{
+				printf("Valor de T inválido, se utilizará T = 4.\n");
+				break;
+			}
+			*thread_num = temp;
 			break;
 		case '?':
 			printHelp(arglist[0]);
@@ -93,15 +106,35 @@ void * loadFileToMem( void )
 	return file_memory;
 }
 
+int printPos(unsigned int order, unsigned int pos, unsigned int nums, unsigned int len, void* file_mem)
+{
+	printf("Aparición %d: ... %.*s < %.*s > %.*s ... @ POS: %d\n",
+			order,
+			nums, (char *)(file_mem+pos-nums),
+			len, (char *)(file_mem + pos),
+			nums, (char *)(file_mem+pos+len),
+			pos);
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
-	int N = 10;
-	int T = 4;
-	int index = 1;
-	int ctrl = 0;
-	void* fm = NULL;
+	/*	Variables y valores por defecto	*/
+	int ctrl	= 0;
+	int N		= 10;
+	int T		= 4;
+	int index	= 1;
+	int arg_len = 0;
+	int i		= 0;
+	int cnt		= 0;
+
+	/*	Punteros	*/
+	void* fm	= NULL;
 
 	struct timespec ts_in,ts_out;
+
+	/*	Inicio del programa	*/
 
 	clock_gettime(CLOCK_MONOTONIC,&ts_in);
 
@@ -110,10 +143,10 @@ int main(int argc, char *argv[])
 	{
 		return -1;
 	}
-
+	arg_len = strlen(argv[index]);
 	/*	Inicio	*/
-	printf("\nPi Searcher:\n------------\n\n");
-	printf("Configuración: N = %d | T = %d\n\n Cargando archivo...",N,T);
+	printf("\nPi Searcher:\n--------------\n");
+	printf("N = %d | T = %d\n--------------\n\n	Cargando archivo...",N,T);
 
 	fm = loadFileToMem();
 	if(ctrl != 0)
@@ -124,17 +157,27 @@ int main(int argc, char *argv[])
 	printf("Listo:\n");
 
 	clock_gettime(CLOCK_MONOTONIC,&ts_out);
-	printf("\nTiempo de inicio: %u.%09u segundos\n",
+	printf("\nTiempo de inicio: %u.%09u segundos\n\n",
 			(unsigned int)(ts_out.tv_sec - ts_in.tv_sec),
 			(unsigned int)(ts_out.tv_nsec - ts_in.tv_nsec));
 
-	/*	FIXME - CONTINUAR ACA	*/
-	char * ptr;
 
-	ptr = strstr((char *)fm,"594553");
+	while( i != (FILE_LENGTH - arg_len) )
+	{
+		ctrl = strncmp(argv[index], (char*) fm+i, arg_len);
+		if(ctrl == 0)
+		{
+			cnt++;
+			printPos(cnt, i, N, arg_len, fm);
+		}
+		i++;
+	}
 
-	printf("Lei: %d\n", ptr - (char *)fm);
+	printf("\nEncontré: %d apariciones. El valor de i es %d \n", cnt, i);
 
+
+
+	/*--	Fin de Programa		--*/
 	ctrl = munmap (fm, FILE_LENGTH);
 	if (ctrl == -1)
 	{
