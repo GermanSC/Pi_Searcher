@@ -9,7 +9,7 @@ OBJETOS = main.o
 all : pi_Search
 
 pi_Search : $(OBJETOS)
-	$(CC) $(CFLAGS) $(OBJETOS) -o $@
+	$(CC) $(CFLAGS) $(OBJETOS) -o $@ -pthread
 	@echo 'Creación exitosa'
 
 

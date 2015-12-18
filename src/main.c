@@ -11,6 +11,7 @@
 
 #include <fcntl.h>
 #include <getopt.h>
+#include <pthread.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,7 +100,7 @@ int getOptions(int argcount, char *arglist[], unsigned int* thread_num, unsigned
 	return optind;
 }
 
-void * loadFileToMem( void )
+void* loadFileToMem( void )
 {
 	void* file_memory;
 	int fd = -1;
@@ -157,9 +158,16 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 	unsigned int i;
 	unsigned int cnt;
 	unsigned int arg_len = strlen(str);
-	FILE* temp_file;
+	FILE* temp_file, *temp_result;
 
 	temp_file = fopen("/tmp/mitemp","w+b");
+	if(temp_file == NULL )
+	{
+		printf("Error al abrir el archivo temporal.\n");
+		return -1;
+
+	}
+	temp_result = fopen("/tmp/mitempres","w+b");
 	if(temp_file == NULL )
 	{
 		printf("Error al abrir el archivo temporal.\n");
@@ -185,28 +193,49 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 			}
 			i++;
 		}
-		printf("Apariciones de %*.*s: %u \n", (int)strlen(str), arg_len, str, cnt);
+		fprintf(temp_result,"%u\n",cnt);
+//		printf("Apariciones de %*.*s: %u \n", (int)strlen(str), arg_len, str, cnt);
 		arg_len--;
 	}
 
 	fclose(temp_file);
-	printf("\n");
+	fclose(temp_result);
 	return 0;
 }
 
-int printOccur(unsigned int nums, unsigned int len, void* file_mem)
+int printOccur(unsigned int nums, char * str, void* file_mem)
 {
 	int read;
 	unsigned int order = 0;
 	unsigned int pos;
 	FILE* tmp;
+	unsigned int len = strlen(str);
 
+	tmp = fopen("/tmp/mitempres","r");
+
+	printf("\n");
+	if(tmp == NULL )
+	{
+		printf("Error al abrir el archivo temporal.\n");
+		return -1;
+	}
+
+	while(len > 0)
+	{
+		read = fscanf(tmp,"%u",&pos);
+		printf("Apariciones de %*.*s: %u \n", (int)strlen(str), len, str, pos);
+		len--;
+	}
+
+	fclose(tmp);
+	unlink("/tmp/mitempres");
+
+	printf("\n");
 	tmp = fopen("/tmp/mitemps","r");
 	if(tmp == NULL )
 	{
 		printf("Error al abrir el archivo temporal.\n");
 		return -1;
-
 	}
 
 	while(1)
@@ -215,7 +244,7 @@ int printOccur(unsigned int nums, unsigned int len, void* file_mem)
 		read = fscanf(tmp,"%u",&pos);
 		if(read != EOF)
 		{
-			printPos(order, pos, nums, len, file_mem );
+			printPos(order, pos, nums, strlen(str), file_mem );
 		} else {
 			break;
 		}
@@ -279,6 +308,8 @@ int main(int argc, char *argv[])
 	clock_gettime(CLOCK_MONOTONIC,&ts_int);
 
 	printf("Ejecutando búsqueda...\n");
+
+	/*	Busqueda e Impresión de resultados	*/
 	ctrl = lookFor(argv[index],fm, 0, FILE_LENGTH);
 
 	clock_gettime(CLOCK_MONOTONIC,&ts_out);
@@ -286,9 +317,8 @@ int main(int argc, char *argv[])
 	printDiffTime(ts_int, ts_out, "de búsqueda");
 	printDiffTime(ts_in, ts_out, "Total      ");
 
-	printf("100%%\n");
 	ctrl = sortResults();
-	ctrl = printOccur(N, strlen(argv[index]),fm);
+	ctrl = printOccur(N, argv[index],fm);
 
 	/*----	Fin de Programa		----*/
 	unlink("/tmp/mitemps");
