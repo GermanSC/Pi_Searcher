@@ -89,6 +89,12 @@ int getOptions(int argcount, char *arglist[], unsigned int* thread_num, unsigned
 		}
 	} while (opt_sig != -1);
 
+	if (arglist[optind] == NULL)
+	{
+		printHelp(arglist[0]);
+		return -1;
+	}
+
 	return optind;
 }
 
@@ -119,48 +125,106 @@ int printPos(unsigned int order, unsigned int pos, unsigned int nums, unsigned i
 
 	if(nums > pos)
 	{
-		printf("%.*s ", pos, (char *)(file_mem));
+		printf("%*.*s ", nums+4, pos, (char *)(file_mem));
 
 	}else{
 
 	printf("... %.*s ", nums, (char *)(file_mem + pos - nums));
 
 	}
-	printf("< %.*s > %.*s ... @ POS: %d\n",
-			len, (char *)(file_mem + pos),
-			nums, (char *)(file_mem+pos+len),
-			pos);
+	printf("< %.*s > ",	len, (char *)(file_mem + pos));
+
+	if( pos + len + nums >= FILE_LENGTH)
+	{
+		printf("%.*s ", (FILE_LENGTH - pos - len -1), (char *)(file_mem + pos + len));
+		printf("%*s", (nums + 5 - (FILE_LENGTH - pos - len)), " ");
+
+	}else{
+
+	printf("%.*s ... ", nums, (char *)(file_mem+pos+len));
+
+	}
+
+	printf("@ POS: %d\n", pos);
 
 	return 0;
 }
 
-void lookFor(char * str, void* file_mem)
+int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 {
 	signed	 int cmp;
 	unsigned int i;
 	unsigned int cnt;
 	unsigned int arg_len = strlen(str);
+	FILE* temp_file;
+
+	temp_file = fopen("/tmp/mitemp","w+b");
+	if(temp_file == NULL )
+	{
+		printf("Error al abrir el archivo temporal.\n");
+		return -1;
+
+	}
 
 	while(arg_len > 0)
 	{
 		cnt = 0;
 		cmp = 0;
 		i = 0;
-		while( i != (FILE_LENGTH - 1) )
+		while( i != (range - 1) )
 		{
-			cmp = strncmp(str, (char*) file_mem+i, arg_len);
+			cmp = strncmp(str, (char*) (file_mem + offset + i), arg_len);
 			if(cmp == 0)
 			{
 				cnt++;
+				if(arg_len == strlen(str))
+				{
+					fprintf(temp_file,"%u\n",i);
+				}
 			}
 			i++;
 		}
-		printf("Apariciones de %.*s: %u \n", arg_len, str, cnt);
+		printf("Apariciones de %*.*s: %u \n", (int)strlen(str), arg_len, str, cnt);
 		arg_len--;
 	}
+
+	fprintf(temp_file,"\n");
+	fclose(temp_file);
 	printf("\n");
+	return 0;
 }
 
+int printOccur(unsigned int nums, unsigned int len, void* file_mem)
+{
+	int read;
+	unsigned int order = 0;
+	unsigned int pos;
+	FILE* tmp;
+
+	tmp = fopen("/tmp/mitemp","r");
+	if(tmp == NULL )
+	{
+		printf("Error al abrir el archivo temporal.\n");
+		return -1;
+
+	}
+
+	while(1)
+	{
+		order++;
+		read = fscanf(tmp,"%u",&pos);
+		if(read != EOF)
+		{
+			printPos(order, pos, nums, len, file_mem );
+		} else {
+			break;
+		}
+	}
+
+	fclose(tmp);
+	printf("\n");
+	return 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -201,9 +265,12 @@ int main(int argc, char *argv[])
 	clock_gettime(CLOCK_MONOTONIC,&ts_out);
 	printDiffTime(ts_in, ts_out);
 
-	lookFor(argv[index],fm);
+	ctrl = lookFor(argv[index],fm, 0, FILE_LENGTH);
+
+	ctrl = printOccur(N, strlen(argv[index]),fm);
 
 	/*----	Fin de Programa		----*/
+	unlink("/tmp/mitemp");
 	ctrl = munmap (fm, FILE_LENGTH);
 	if (ctrl == -1)
 	{
