@@ -18,8 +18,8 @@
 #include <time.h>
 #include <sys/mman.h>
 
-//#define FILE_LENGTH 100000002
-#define FILE_LENGTH 2002
+#define FILE_LENGTH 100000002
+//#define FILE_LENGTH 2002
 
 void printHelp(char* Name)
 {
@@ -37,7 +37,7 @@ void printHelp(char* Name)
 
 void printDiffTime(struct timespec tsin, struct timespec tsout, char* str)
 {
-	printf("Tiempo %s: %u.%09u segundos\n",
+	printf("Tiempo %s: %4u.%09u segundos\n",
 				str,
 				(unsigned int)(tsout.tv_sec - tsin.tv_sec),
 				(unsigned int)(tsout.tv_nsec - tsin.tv_nsec));
@@ -104,7 +104,7 @@ void * loadFileToMem( void )
 	void* file_memory;
 	int fd = -1;
 
-	fd = open("pitest.txt",O_RDONLY);
+	fd = open("fpi.txt",O_RDONLY);
 	if(fd == -1)
 	{
 		return (void *)-1;
@@ -274,19 +274,19 @@ int main(int argc, char *argv[])
 		printf("ERROR");
 		return -1;
 	}
-	printf("Listo:\n\n");
+	printf("Listo.\n\n");
 
 	clock_gettime(CLOCK_MONOTONIC,&ts_int);
-	printDiffTime(ts_in, ts_int, "de carga");
 
-	printf("\n");
+	printf("Ejecutando búsqueda...\n");
 	ctrl = lookFor(argv[index],fm, 0, FILE_LENGTH);
 
 	clock_gettime(CLOCK_MONOTONIC,&ts_out);
+	printDiffTime(ts_in, ts_int, "de carga   ");
 	printDiffTime(ts_int, ts_out, "de búsqueda");
-	printDiffTime(ts_in, ts_out, "Total");
+	printDiffTime(ts_in, ts_out, "Total      ");
 
-	printf("\n");
+	printf("100%%\n");
 	ctrl = sortResults();
 	ctrl = printOccur(N, strlen(argv[index]),fm);
 
