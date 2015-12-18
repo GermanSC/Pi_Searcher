@@ -35,9 +35,10 @@ void printHelp(char* Name)
 
 }
 
-void printDiffTime(struct timespec tsin, struct timespec tsout)
+void printDiffTime(struct timespec tsin, struct timespec tsout, char* str)
 {
-	printf("\nTiempo de inicio: %u.%09u segundos\n\n",
+	printf("Tiempo %s: %u.%09u segundos\n",
+				str,
 				(unsigned int)(tsout.tv_sec - tsin.tv_sec),
 				(unsigned int)(tsout.tv_nsec - tsin.tv_nsec));
 }
@@ -188,7 +189,6 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 		arg_len--;
 	}
 
-	fprintf(temp_file,"\n");
 	fclose(temp_file);
 	printf("\n");
 	return 0;
@@ -201,7 +201,7 @@ int printOccur(unsigned int nums, unsigned int len, void* file_mem)
 	unsigned int pos;
 	FILE* tmp;
 
-	tmp = fopen("/tmp/mitemp","r");
+	tmp = fopen("/tmp/mitemps","r");
 	if(tmp == NULL )
 	{
 		printf("Error al abrir el archivo temporal.\n");
@@ -226,6 +226,20 @@ int printOccur(unsigned int nums, unsigned int len, void* file_mem)
 	return 0;
 }
 
+int sortResults(void)
+{
+	FILE* tmp;
+	tmp = fopen("/tmp/mitemps","w");
+	if(tmp == NULL )
+	{
+		printf("Error al abrir el archivo temporal.\n");
+		return -1;
+	}
+	system("sort -n '/tmp/mitemp' > '/tmp/mitemps'");
+	unlink("/tmp/mitemp");
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	/*	Variables y valores por defecto	*/
@@ -237,7 +251,7 @@ int main(int argc, char *argv[])
 	/*	Punteros	*/
 	void* fm	= NULL;
 
-	struct timespec ts_in,ts_out;
+	struct timespec ts_in,ts_out, ts_int;
 
 	/*	Inicio del programa	*/
 
@@ -260,17 +274,24 @@ int main(int argc, char *argv[])
 		printf("ERROR");
 		return -1;
 	}
-	printf("Listo:\n");
+	printf("Listo:\n\n");
 
-	clock_gettime(CLOCK_MONOTONIC,&ts_out);
-	printDiffTime(ts_in, ts_out);
+	clock_gettime(CLOCK_MONOTONIC,&ts_int);
+	printDiffTime(ts_in, ts_int, "de carga");
 
+	printf("\n");
 	ctrl = lookFor(argv[index],fm, 0, FILE_LENGTH);
 
+	clock_gettime(CLOCK_MONOTONIC,&ts_out);
+	printDiffTime(ts_int, ts_out, "de búsqueda");
+	printDiffTime(ts_in, ts_out, "Total");
+
+	printf("\n");
+	ctrl = sortResults();
 	ctrl = printOccur(N, strlen(argv[index]),fm);
 
 	/*----	Fin de Programa		----*/
-	unlink("/tmp/mitemp");
+	unlink("/tmp/mitemps");
 	ctrl = munmap (fm, FILE_LENGTH);
 	if (ctrl == -1)
 	{
