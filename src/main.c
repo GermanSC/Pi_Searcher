@@ -24,7 +24,7 @@
 #define FILE_LENGTH 100000002
 
 /*	GLOBAL VARIABLES	*/
-char* lookforme = "1234";
+char* lookforme = NULL;
 void* fm = NULL;
 unsigned int T = 4;
 
@@ -178,6 +178,9 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 	unsigned int arg_len = strlen(str);
 	FILE* temp_file, *temp_result;
 
+	temp_file = fopen("/tmp/mitemp","a");
+	fclose(temp_file);
+
 	while(arg_len > 0)
 	{
 		cnt = 0;
@@ -229,6 +232,7 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 int printOccur(unsigned int nums, char * str, void* file_mem)
 {
 	int read, count, temp, count_ant;
+	unsigned int main_num = 0;
 	unsigned int order = 0;
 	unsigned int pos;
 	FILE* tmp;
@@ -260,13 +264,22 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 		}
 		fseek(tmp,0,SEEK_SET);
 		printf("Apariciones de %*.*s: %u \n", (int)strlen(str), len, str, count_ant);
+		if(len == strlen(str))
+		{
+			main_num = count_ant;
+		}
 		len--;
 	}
 	fclose(tmp);
 	unlink("/tmp/mitempres");
 
-	printf("\nPresione ENTER para ver las apariciones de %s",lookforme);
-	getchar();
+	if(main_num >= 10)
+	{
+		printf("\nPresione ENTER para ver las apariciones de %s\n",lookforme);
+		getchar();
+	} else {
+		printf("\n");
+	}
 
 	tmp = fopen("/tmp/mitemps","r");
 	if(tmp == NULL )
@@ -275,16 +288,25 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 		return -1;
 	}
 
-	while(1)
+	read = 0;
+	while(read != EOF)
 	{
-		order++;
-		read = fscanf(tmp,"%u",&pos);
-		if(read != EOF)
+		for(count = 0; count < 20; count++)
 		{
-			printPos(order, pos, nums, strlen(str), file_mem );
-		} else {
-			break;
+			order++;
+			read = fscanf(tmp,"%u",&pos);
+			if(read != EOF)
+			{
+				printPos(order, pos, nums, strlen(str), file_mem );
+			} else {
+				break;
+			}
 		}
+		if(main_num >= 10)
+		{
+			getchar();
+		}
+
 	}
 
 	fclose(tmp);
@@ -413,6 +435,8 @@ int main(int argc, char *argv[])
 			"N = %d | T = %d\n--------------\n"
 			"\nCargando archivo...",thread_offset,N,T);
 
+	lookforme = argv[index];
+
 	fm = loadFileToMem();
 	if(fm == (void*) -1)	/*	ERROR DE CARGA	*/
 	{
@@ -430,11 +454,9 @@ int main(int argc, char *argv[])
 	printf("Listo.\n\n");
 	clock_gettime(CLOCK_MONOTONIC,&ts_int);
 
-	printf("Ejecutando búsqueda...\n");
+	printf("Ejecutando búsqueda...");
 
 	/*	Busqueda */
-
-	printf("Voy a buscar %s\n",lookforme);
 
 	for(ctrl = 0; ctrl < T; ctrl++ )
 	{
@@ -457,8 +479,6 @@ int main(int argc, char *argv[])
 
 	ctrl = sortResults();
 	ctrl = printOccur(N, argv[index], fm);
-
-	printf("Termino!\n");
 
 	/*----	Fin de Programa		----*/
 	ctrl = cleanUp(fm);
