@@ -27,6 +27,7 @@
 char* lookforme = NULL;
 void* fm = NULL;
 unsigned int T = 4;
+unsigned int per = 0;
 
 /*	Semaforo	*/
 int sem_id;
@@ -218,7 +219,7 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 			printf("Error al abrir el archivo temporal \"mitempres\".\n");
 			return -1;
 		}
-
+		per++;
 		fprintf(temp_result,"%u %u\n",arg_len, cnt);
 		fclose(temp_result);
 
@@ -408,6 +409,7 @@ int main(int argc, char *argv[])
 	signed	 int index		= 1;
 	unsigned int ctrl		= 0;
 	unsigned int N			= 10;
+	unsigned int per_ant	= 0;
 
 	/*	Variables de hilos	*/
 	static unsigned int thread_offset;
@@ -449,11 +451,12 @@ int main(int argc, char *argv[])
 		printf("Error de creación de Semaforo.\n");
 		return -1;
 	}
+	per_ant = per;
 
 	printf("Listo.\n\n");
 	clock_gettime(CLOCK_MONOTONIC,&ts_int);
 
-	printf("Ejecutando búsqueda...");
+	printf("Ejecutando búsqueda... 0%%\n");
 
 	/*	Busqueda */
 
@@ -466,9 +469,19 @@ int main(int argc, char *argv[])
 	}
 
 	/*	Espero a que terminen los hijos.	*/
+	while( semctl(sem_id, 0, GETVAL) != T)
+	{
+		if(per != per_ant)
+		{
+			printf("Ejecutando búsqueda... %u%%\n", ( 100 * per / (T * (unsigned int) strlen(lookforme))));
+			per_ant = per;
+		}
+	}
+
 	sbuf.sem_op = -T;
 	semop(sem_id,&sbuf,1);
 
+	printf("Ejecutando búsqueda... 100%%\n");
 	/* Impresión de resultados	*/
 
 	clock_gettime(CLOCK_MONOTONIC,&ts_out);
