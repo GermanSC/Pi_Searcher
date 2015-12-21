@@ -39,6 +39,7 @@ pthread_mutex_t res_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /*	FUNCIONES	*/
 
+/*	Imprime la ayuda y el modo de uso	*/
 void printHelp(char* Name)
 {
 	printf( "\nUso: %s [opciones] secuencia\n\n", Name);
@@ -53,6 +54,7 @@ void printHelp(char* Name)
 
 }
 
+/*	Imprime la diferencia de tiempo entre tsin y tsout, con str como cadena de indicación	*/
 void printDiffTime(struct timespec tsin, struct timespec tsout, char* str)
 {
 	printf("Tiempo %s: %4u.%09u segundos\n",
@@ -61,6 +63,7 @@ void printDiffTime(struct timespec tsin, struct timespec tsout, char* str)
 				(unsigned int)(tsout.tv_nsec - tsin.tv_nsec));
 }
 
+/*	Obtiene las opciones de la llamada y redirige a la impresion de ayuda.	*/
 int getOptions(int argcount, char *arglist[], unsigned int* thread_num, unsigned int* n_offset)
 {
 	int opt_sig;
@@ -117,6 +120,7 @@ int getOptions(int argcount, char *arglist[], unsigned int* thread_num, unsigned
 	return optind;
 }
 
+/*	Carga el archivo con las cifras de pi en memoria.	*/
 void* loadFileToMem( void )
 {
 	void* file_memory;
@@ -140,6 +144,8 @@ void* loadFileToMem( void )
 	return file_memory;
 }
 
+/*	Imprime el contenido de la memoria file_mem a partir del offset indicada por pos,
+ *  ademas de los num valores anteriores y posteriores.	*/
 int printPos(unsigned int order, unsigned int pos, unsigned int nums, unsigned int len, void* file_mem)
 {
 	printf("Aparición %d: ",order);
@@ -171,6 +177,9 @@ int printPos(unsigned int order, unsigned int pos, unsigned int nums, unsigned i
 	return 0;
 }
 
+/*	Busca en las direcciones de memoria de file_mem, a partir de offset y durante range iteraciones
+ *  cadenas de texto, guardando en archivos la ubicacion de cada aparicion. finalmente la cantidad
+ *  de apariciones en otro archivo, y asi sucesivamente con las sub cadenas.	*/
 int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 {
 	signed	 int cmp;
@@ -230,6 +239,7 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 	return 0;
 }
 
+/*	Recoge las apariciones de la cadena y las manda a imprimir mediante la funcion printPos */
 int printOccur(unsigned int nums, char * str, void* file_mem)
 {
 	int read, count, temp, count_ant;
@@ -316,6 +326,7 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 	return 0;
 }
 
+/* Ordena las ubicaciones del archivo de apariciones numericamente	*/
 int sortResults(void)
 {
 	FILE* tmp;
@@ -331,6 +342,7 @@ int sortResults(void)
 	return 0;
 }
 
+/* Funcion del hilo, calcula el rango que le correponde buscar y realiza la busqueda.	*/
 void* threadFunc(void* parameter)
 {
 	unsigned int c = *(unsigned int *) parameter;
@@ -355,6 +367,7 @@ void* threadFunc(void* parameter)
 	return NULL;
 }
 
+/* Limpia y libera direcciones de memoria, semaforos y borra archivos temporales.	*/
 int cleanUp(void * file_mem)
 {
 	int tmp;
@@ -375,6 +388,7 @@ int cleanUp(void * file_mem)
 	return tmp;
 }
 
+/*	Inicializa el semaforo	*/
 int semInit(void)
 {
 	int semid;
@@ -403,6 +417,7 @@ int semInit(void)
 
 }
 
+/*	Funcion ppal.	*/
 int main(int argc, char *argv[])
 {
 	/*	Variables y valores por defecto	*/
@@ -416,13 +431,9 @@ int main(int argc, char *argv[])
 	pthread_t threadid;
 	unsigned int thread_arg;
 
-	/*	Punteros	*/
-	//void* fm	= NULL;
-
 	struct timespec ts_in,ts_out, ts_int;
 
 	/*	Inicio del programa	*/
-
 	clock_gettime(CLOCK_MONOTONIC,&ts_in);
 
 	index = getOptions(argc, argv, &T, &N);
