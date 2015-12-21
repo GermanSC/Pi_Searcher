@@ -371,7 +371,6 @@ int cleanUp(void * file_mem)
 	{
 		printf("Error al eliminar el semaforo.\n");
 	}
-
 	return tmp;
 }
 
