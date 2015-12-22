@@ -195,12 +195,12 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 	temp_file = fopen("/tmp/mitemp","a");
 	fclose(temp_file);
 
-	while(arg_len > 0 && cancel != 0)
+	while( arg_len > 0 && cancel != 0 )
 	{
 		cnt = 0;
 		cmp = 0;
 		i = 0;
-		while( i != (range - 1) )
+		while( i != (range - 1) && cancel != 0 )
 		{
 			cmp = strncmp(str, (char*) (file_mem + offset + i), arg_len);
 			if(cmp == 0)
@@ -452,7 +452,6 @@ int semInit(void)
 	}
 
 	return semid;
-
 }
 
 /*	Funcion ppal.	*/
