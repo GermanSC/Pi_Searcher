@@ -499,6 +499,7 @@ int main(int argc, char *argv[])
 	if(sem_id == -1)
 	{
 		printf("Error de creación de Semaforo.\n");
+		ctrl = cleanUp(fm);
 		return -1;
 	}
 	per_ant = per;
@@ -518,7 +519,7 @@ int main(int argc, char *argv[])
 		semop(sem_id,&sbuf,1);
 	}
 
-	/*	Espero a que terminen los hijos.	*/
+	/*	Espero a que terminen los hilos.	*/
 	while( semctl(sem_id, 0, GETVAL) != T)
 	{
 		if(per != per_ant)
