@@ -6,5 +6,7 @@ e imprime todas las apariciones de dicha secuencia encontradas, ademas de los N 
 Como configuracion permite modificar la cantidad N (-N xx) y la cantidad de hilos a utilizar para realizar la
 busqueda (-T xx). Por defecto se consideran los valores -N 10 y -T 4.
 
-Como requisito es necesario tener en la misma carpeta del binario un archivo de texto con las 100.000.001 primeras
+## Requisitos:
+
+Es necesario tener en la misma carpeta del binario un archivo de texto con las 100.000.001 primeras
 cifras de Pi.
