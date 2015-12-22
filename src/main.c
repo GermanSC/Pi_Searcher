@@ -13,11 +13,13 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <pthread.h>
+#include <signal.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/sem.h>
 
@@ -28,6 +30,8 @@ char* lookforme = NULL;
 void* fm = NULL;
 unsigned int T = 4;
 unsigned int per = 0;
+volatile int cancel = -1;
+volatile int search_over = 0;
 
 /*	Semaforo	*/
 int sem_id;
@@ -191,7 +195,7 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 	temp_file = fopen("/tmp/mitemp","a");
 	fclose(temp_file);
 
-	while(arg_len > 0)
+	while(arg_len > 0 && cancel != 0)
 	{
 		cnt = 0;
 		cmp = 0;
@@ -361,6 +365,14 @@ void* threadFunc(void* parameter)
 
 	lookFor(lookforme, fm, c, range);
 
+	if(cancel != -1)
+	{
+		pthread_mutex_lock(&lock);
+		cancel++;
+		pthread_mutex_unlock(&lock);
+		return NULL;
+	}
+
 	sbuf.sem_op = 1;
 	semop(sem_id,&sbuf,1);
 
@@ -372,7 +384,9 @@ int cleanUp(void * file_mem)
 {
 	int tmp;
 
+	unlink("/tmp/mitemp");
 	unlink("/tmp/mitempres");
+	unlink("/tmp/mitemps");
 
 	tmp = munmap (file_mem, FILE_LENGTH);
 	if (tmp == -1)
@@ -385,7 +399,31 @@ int cleanUp(void * file_mem)
 	{
 		printf("Error al eliminar el semaforo.\n");
 	}
+
 	return tmp;
+}
+
+void term(int signum)
+{
+	cancel = 0;
+	printf("\nCerrando el programa, aguarde un minuto...\n");
+
+	while(cancel != T && search_over == 0 );
+
+	printf("Limpiando archivos temporales...");
+    cleanUp(fm);
+    printf("Listo\n");
+
+    exit(0);
+}
+
+void sigTermSetUp(void)
+{
+	struct sigaction action;
+    memset(&action, 0, sizeof(struct sigaction));
+    action.sa_handler = term;
+    action.sa_flags = SA_RESTART;
+    sigaction(SIGINT, &action, NULL);
 }
 
 /*	Inicializa el semaforo	*/
@@ -442,6 +480,8 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	sigTermSetUp();
+
 	/*	Inicio	*/
 	printf( "\nPi Searcher: %u\n--------------\n"
 			"N = %d | T = %d\n--------------\n"
@@ -493,6 +533,8 @@ int main(int argc, char *argv[])
 	semop(sem_id,&sbuf,1);
 
 	printf("Ejecutando búsqueda... 100%%\n");
+	search_over = 1;
+
 	/* Impresión de resultados	*/
 
 	clock_gettime(CLOCK_MONOTONIC,&ts_out);
