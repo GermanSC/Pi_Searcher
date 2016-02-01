@@ -136,7 +136,7 @@ void* loadFileToMem( void )
 		printf("Error al cargar el archivo de datos.\n");
 		return (void *)-1;
 	}
-	/* Create the memory mapping. */
+	/* mapeo en memoria */
 	file_memory = mmap (NULL, FILE_LENGTH, PROT_READ, MAP_SHARED, fd, 0);
 	close (fd);
 	if(file_memory == (void *) -1)
@@ -181,9 +181,10 @@ int printPos(unsigned int order, unsigned int pos, unsigned int nums, unsigned i
 	return 0;
 }
 
-/*	Busca en las direcciones de memoria de file_mem, a partir de offset y durante range iteraciones
- *  cadenas de texto, guardando en archivos la ubicacion de cada aparicion. finalmente la cantidad
- *  de apariciones en otro archivo, y asi sucesivamente con las sub cadenas.	*/
+/*	Busca cadenas de texto en las direcciones de memoria de file_mem, a partir de
+ *  offset y durante range iteraciones, guardando en archivos la ubicacion de cada
+ *  aparicion. Finalmente guarda la cantidad de apariciones en otro archivo, y asi
+ *   sucesivamente con las sub cadenas.	*/
 int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 {
 	signed	 int cmp;
