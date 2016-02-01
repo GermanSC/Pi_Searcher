@@ -195,12 +195,12 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 	temp_file = fopen("/tmp/mitemp","a");
 	fclose(temp_file);
 
-	while(arg_len > 0 && cancel != 0)
+	while( arg_len > 0 && cancel == -1 )
 	{
 		cnt = 0;
 		cmp = 0;
 		i = 0;
-		while( i != (range - 1) )
+		while( i != (range - 1) && cancel == -1 )
 		{
 			cmp = strncmp(str, (char*) (file_mem + offset + i), arg_len);
 			if(cmp == 0)
@@ -406,7 +406,7 @@ int cleanUp(void * file_mem)
 void term(int signum)
 {
 	cancel = 0;
-	printf("\nCerrando el programa, aguarde un minuto...\n");
+	printf("\nCerrando el programa, aguarde un momento.\n");
 
 	while(cancel != T && search_over == 0 );
 
@@ -452,7 +452,6 @@ int semInit(void)
 	}
 
 	return semid;
-
 }
 
 /*	Funcion ppal.	*/
@@ -500,6 +499,7 @@ int main(int argc, char *argv[])
 	if(sem_id == -1)
 	{
 		printf("Error de creación de Semaforo.\n");
+		ctrl = cleanUp(fm);
 		return -1;
 	}
 	per_ant = per;
@@ -519,7 +519,7 @@ int main(int argc, char *argv[])
 		semop(sem_id,&sbuf,1);
 	}
 
-	/*	Espero a que terminen los hijos.	*/
+	/*	Espero a que terminen los hilos.	*/
 	while( semctl(sem_id, 0, GETVAL) != T)
 	{
 		if(per != per_ant)
@@ -532,7 +532,7 @@ int main(int argc, char *argv[])
 	sbuf.sem_op = -T;
 	semop(sem_id,&sbuf,1);
 
-	printf("Ejecutando búsqueda... 100%%\n");
+	printf("Ejecutando búsqueda... 100%%\n\n");
 	search_over = 1;
 
 	/* Impresión de resultados	*/
