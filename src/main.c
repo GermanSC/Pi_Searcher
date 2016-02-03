@@ -232,9 +232,7 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 					}
 					/* Guardo la posición */
 
-					printf("Este vale... posición: %u\n",i);
-
-					nuevo->posicion = i;
+					nuevo->posicion = i + offset;
 					nuevo->siguiente = NULL;
 
 					if( *(found + len -1) == 1)
@@ -248,15 +246,13 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 					}
 				}
 				pthread_mutex_unlock(&lock);
+
 			}else{
 				break;
 			}
 		}
 		i++;
 	}
-	pthread_mutex_lock(&res_lock);
-
-	pthread_mutex_unlock(&res_lock);
 
 	return 0;
 }
