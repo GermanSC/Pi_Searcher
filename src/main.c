@@ -9,9 +9,6 @@
  ============================================================================
  */
 
-/*fixme Indicador de progreso.
- * */
-
 #include <sys/ipc.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -39,6 +36,7 @@ char* lookforme = NULL;
 void* fm = NULL;
 unsigned int*  found = NULL;
 unsigned int*  done = NULL;
+unsigned int*  sorted = NULL;
 unsigned int T = 4;
 volatile int cancel = -1;
 volatile int search_over = 0;
@@ -266,7 +264,6 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 /*	Recoge las apariciones de la cadena y las manda a imprimir mediante la funcion printPos */
 int printOccur(unsigned int nums, char * str, void* file_mem)
 {
-	struct dato* index;
 	unsigned int len = strlen(str);
 	unsigned int k;
 	unsigned int t = 1;
@@ -280,8 +277,6 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 	}
 	printf("\n");
 
-	index = first;
-
 	if((*(found + strlen(str) -1)) != 0)
 	{
 
@@ -293,8 +288,7 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 
 		for(k = 1 ; k <= *(found + strlen(str) -1); k++)
 		{
-			printPos(k, index->posicion, nums, strlen(str), file_mem );
-			index = index->siguiente;
+			printPos(k, *(sorted + k -1), nums, strlen(str), file_mem );
 
 			if(k > 20 * t)
 			{
@@ -302,10 +296,6 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 				getchar();
 			}
 
-			if(index == NULL)
-			{
-				return 0;
-			}
 		}
 	}
 	return 0;
@@ -314,16 +304,41 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 /* Ordena las ubicaciones del archivo de apariciones numericamente	*/
 int sortResults(void)
 {
-	FILE* tmp;
-	tmp = fopen("/tmp/mitemps","w");
-	if(tmp == NULL )
+	struct dato * ind = NULL;
+	struct dato * temp = NULL;
+	unsigned int j, aux;
+	unsigned int n;
+	unsigned int change = 0;
+
+	n = *(found + strlen(lookforme) -1);
+
+	sorted = malloc( n * sizeof(unsigned int) );
+
+	ind = first;
+	for(j = 0; j < (*(found + strlen(lookforme) -1)); j++ )
 	{
-		printf("Error al abrir el archivo temporal.\n");
-		return -1;
+		*(sorted + j ) = ind->posicion;
+		temp = ind;
+		ind = ind->siguiente;
+		free(temp);
 	}
-	fclose(tmp);
-	system("sort -n '/tmp/mitemp' > '/tmp/mitemps'");
-	unlink("/tmp/mitemp");
+	n++;
+	do
+	{
+		change = 0;
+		for(j = 1; j < n-1; j++)
+		{
+			if( *(sorted + j - 1) > *(sorted + j) )
+			{
+				aux = *(sorted + j);
+				*(sorted + j) = *(sorted + j -1);
+				*(sorted + j -1) = aux;
+				change = 1;
+			}
+		}
+		n--;
+	}while(change != 0);
+
 	return 0;
 }
 
@@ -377,13 +392,9 @@ int cleanUp(void * file_mem)
 		printf("Error al eliminar el semaforo.\n");
 	}
 
-	free(first);
-	if(*(found + strlen(lookforme) -1) != 1)
-	{
-		free(last);
-	}
 	free(found);
 	free(done);
+	free(sorted);
 
 	return tmp;
 }
@@ -574,9 +585,10 @@ int main(int argc, char *argv[])
 	printDiffTime(ts_int, ts_out, "de búsqueda");
 	printDiffTime(ts_in, ts_out, "Total      ");
 
-	//ctrl = sortResults();
+	ctrl = sortResults();
+
 	ctrl = printOccur(N, argv[index], fm);
-	printf("\n");
+
 	/*----	Fin de Programa		----*/
 	ctrl = cleanUp(fm);
 
