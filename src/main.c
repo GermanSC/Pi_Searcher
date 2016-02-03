@@ -433,15 +433,16 @@ int memSetUp(void)
 {
 	int tmp;
 
-	found = malloc( 10 * sizeof(unsigned int));
+	found = malloc( strlen(lookforme) * sizeof(unsigned int));
 	if(found == NULL)
 	{
 		printf("Error 1: Memoria insuficiente.\n");
 		return -1;
 	}
+
 	for(tmp = 0; tmp < strlen(lookforme); tmp++)
 	{
-		*(found + strlen(lookforme)) = 0;
+		*(found + tmp) = 0;
 	}
 
 
