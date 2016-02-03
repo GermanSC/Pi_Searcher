@@ -32,7 +32,7 @@
 
 /*	Estructura de lista enlazada	*/
 struct dato{
-	int posicion;
+	unsigned int posicion;
 	struct dato* siguiente;
 };
 
@@ -232,10 +232,12 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 					}
 					/* Guardo la posición */
 
+					printf("Este vale... posición: %u\n",i);
+
 					nuevo->posicion = i;
 					nuevo->siguiente = NULL;
 
-					if(first == NULL)
+					if( *(found + len -1) == 1)
 					{
 						first = nuevo;
 						last = first;
@@ -262,7 +264,9 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 /*	Recoge las apariciones de la cadena y las manda a imprimir mediante la funcion printPos */
 int printOccur(unsigned int nums, char * str, void* file_mem)
 {
+	struct dato* index;
 	unsigned int len = strlen(str);
+	unsigned int k;
 	printf("\n");
 
 	while(len > 0)
@@ -271,37 +275,19 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 		printf("Apariciones de %*.*s: %u \n", (int)strlen(str), len, str, *(found + len -1));
 		len--;
 	}
+	printf("\n");
 
-//	if(main_num >= 10)
-//	{
-//		printf("\nPresione ENTER para ver las apariciones de %s\n",lookforme);
-//		getchar();
-//	} else {
-//		printf("\n");
-//	}
-//
-//	read = 0;
-//	while(read != EOF)
-//	{
-//		for(count = 0; count < 20; count++)
-//		{
-//			order++;
-//			read = fscanf(tmp,"%u",&pos);
-//			if(read != EOF)
-//			{
-//				printPos(order, pos, nums, strlen(str), file_mem );
-//			} else {
-//				break;
-//			}
-//		}
-//		if(main_num >= 10)
-//		{
-//			getchar();
-//		}
-//
-//	}
-//
-//	printf("\n");
+	index = first;
+
+	for(k = 1 ; k <= *(found + len); k++)
+	{
+		printPos(k, index->posicion, nums, strlen(str), file_mem );
+		index = index->siguiente;
+
+		if(index == NULL)
+			break;
+	}
+
 	return 0;
 }
 
