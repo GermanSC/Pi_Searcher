@@ -9,9 +9,7 @@
  ============================================================================
  */
 
-/*fixme Escape del buffer.
- *fixme Indicador de progreso.
- *fixme filosofia de busqueda y almacenamiento.
+/*fixme Indicador de progreso.
  * */
 
 #include <sys/ipc.h>
@@ -39,9 +37,9 @@ struct dato{
 /*	GLOBAL VARIABLES	*/
 char* lookforme = NULL;
 void* fm = NULL;
-int*  found = NULL;
+unsigned int*  found = NULL;
+unsigned int*  done = NULL;
 unsigned int T = 4;
-unsigned int per = 0;
 volatile int cancel = -1;
 volatile int search_over = 0;
 
@@ -53,7 +51,6 @@ struct sembuf sbuf;
 
 /*	Mutexs	*/
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t res_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /*	FUNCIONES	*/
 
@@ -205,15 +202,18 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 	unsigned int i;
 	unsigned int len = 1;
 	unsigned int arg_len = strlen(str);
+	unsigned int thread_num = 0;
 
 	struct dato* nuevo;
 
 	cmp = 1;
 	i = 0;
 
+	thread_num = (unsigned int) (offset / (FILE_LENGTH/T));
+
 	while( i != (range - 1) && cancel == -1 )
 	{
-		for(len = 1; len <= arg_len; len++)
+		for(len = 1; len <= arg_len && cancel == -1 ; len++)
 		{
 			cmp = strncmp(str, (char*) (file_mem + offset + i), len);
 			if(cmp == 0)
@@ -251,6 +251,12 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 				break;
 			}
 		}
+
+		if(thread_num == 0)
+		{
+			*(done) = i;
+		}
+
 		i++;
 	}
 
@@ -263,6 +269,7 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 	struct dato* index;
 	unsigned int len = strlen(str);
 	unsigned int k;
+	unsigned int t = 1;
 	printf("\n");
 
 	while(len > 0)
@@ -275,15 +282,32 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 
 	index = first;
 
-	for(k = 1 ; k <= *(found + len); k++)
+	if((*(found + strlen(str) -1)) != 0)
 	{
-		printPos(k, index->posicion, nums, strlen(str), file_mem );
-		index = index->siguiente;
 
-		if(index == NULL)
-			break;
+		if((*(found + strlen(str) -1)) > 20)
+		{
+			printf("\nPresione ENTER para ver las apariciones de %s\n",lookforme);
+			getchar();
+		}
+
+		for(k = 1 ; k <= *(found + strlen(str) -1); k++)
+		{
+			printPos(k, index->posicion, nums, strlen(str), file_mem );
+			index = index->siguiente;
+
+			if(k > 20 * t)
+			{
+				t++;
+				getchar();
+			}
+
+			if(index == NULL)
+			{
+				return 0;
+			}
+		}
 	}
-
 	return 0;
 }
 
@@ -309,7 +333,7 @@ void* threadFunc(void* parameter)
 	unsigned int c = *(unsigned int *) parameter;
 	unsigned int range;
 
-	if( (c + FILE_LENGTH/T) > FILE_LENGTH )
+	if( (c + (unsigned int) (FILE_LENGTH/T)) > FILE_LENGTH )
 	{
 		range = FILE_LENGTH - c;
 	} else {
@@ -353,9 +377,13 @@ int cleanUp(void * file_mem)
 		printf("Error al eliminar el semaforo.\n");
 	}
 
-	free(found);
 	free(first);
-	free(last);
+	if(*(found + strlen(lookforme) -1) != 1)
+	{
+		free(last);
+	}
+	free(found);
+	free(done);
 
 	return tmp;
 }
@@ -427,6 +455,12 @@ int memSetUp(void)
 		*(found + tmp) = 0;
 	}
 
+	done = malloc(sizeof(unsigned int));
+	if(found == NULL)
+	{
+		printf("Error 5: Memoria insuficiente.\n");
+		return -1;
+	}
 
 	first = (struct dato *) malloc(sizeof(struct dato));
 	if(first == NULL)
@@ -451,6 +485,9 @@ int main(int argc, char *argv[])
 	signed	 int index		= 1;
 	unsigned int ctrl		= 0;
 	unsigned int N			= 10;
+	unsigned int per		= 0;
+	unsigned int per_ant	= 0;
+
 
 	/*	Variables de hilos	*/
 	static unsigned int thread_offset;
@@ -516,7 +553,12 @@ int main(int argc, char *argv[])
 	/*	Espero a que terminen los hilos.	*/
 	while( semctl(sem_id, 0, GETVAL) != T)
 	{
-
+		per = (unsigned int) ( (float)*(done) * T * 100 / FILE_LENGTH);
+		if(per > per_ant + 10 && per != 100)
+		{
+			printf("Ejecutando búsqueda... %u%%\n", per);
+			per_ant = per;
+		}
 	}
 
 	sbuf.sem_op = -T;
@@ -534,7 +576,7 @@ int main(int argc, char *argv[])
 
 	//ctrl = sortResults();
 	ctrl = printOccur(N, argv[index], fm);
-
+	printf("\n");
 	/*----	Fin de Programa		----*/
 	ctrl = cleanUp(fm);
 
