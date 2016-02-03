@@ -9,6 +9,11 @@
  ============================================================================
  */
 
+/*fixme Escape del buffer.
+ *fixme Indicador de progreso.
+ *fixme filosofia de busqueda y almacenamiento.
+ * */
+
 #include <sys/ipc.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -25,13 +30,22 @@
 
 #define FILE_LENGTH 100000002
 
+/*	Estructura de lista enlazada	*/
+struct dato{
+	int posicion;
+	struct dato* siguiente;
+};
+
 /*	GLOBAL VARIABLES	*/
 char* lookforme = NULL;
 void* fm = NULL;
+int*  found = NULL;
 unsigned int T = 4;
 unsigned int per = 0;
 volatile int cancel = -1;
 volatile int search_over = 0;
+
+struct dato *first, *last;
 
 /*	Semaforo	*/
 int sem_id;
@@ -189,57 +203,58 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 {
 	signed	 int cmp;
 	unsigned int i;
-	unsigned int cnt;
+	unsigned int len = 1;
 	unsigned int arg_len = strlen(str);
-	FILE* temp_file, *temp_result;
 
-	temp_file = fopen("/tmp/mitemp","a");
-	fclose(temp_file);
+	struct dato* nuevo;
 
-	while( arg_len > 0 && cancel == -1 )
+	cmp = 1;
+	i = 0;
+
+	while( i != (range - 1) && cancel == -1 )
 	{
-		cnt = 0;
-		cmp = 0;
-		i = 0;
-		while( i != (range - 1) && cancel == -1 )
+		for(len = 1; len <= arg_len; len++)
 		{
-			cmp = strncmp(str, (char*) (file_mem + offset + i), arg_len);
+			cmp = strncmp(str, (char*) (file_mem + offset + i), len);
 			if(cmp == 0)
 			{
-				cnt++;
-				if(arg_len == strlen(str))
+				pthread_mutex_lock(&lock);
+
+				*(found + len -1) += 1;
+				if(len == arg_len)
 				{
-					pthread_mutex_lock(&lock);
-					temp_file = fopen("/tmp/mitemp","a");
-					if(temp_file == NULL )
+					nuevo = (struct dato *) malloc(sizeof(struct dato));
+					if(nuevo == NULL)
 					{
-						printf("Error al abrir el archivo temporal \"mitemp\".\n");
-						return -1;
+						printf("Error: Memoria insuficiente.\n");
+						cancel = 0;
+						break;
 					}
+					/* Guardo la posición */
 
-					fprintf(temp_file,"%u ",i+offset);
-					fprintf(temp_file,"\n");
+					nuevo->posicion = i;
+					nuevo->siguiente = NULL;
 
-					fclose(temp_file);
-					pthread_mutex_unlock(&lock);
+					if(first == NULL)
+					{
+						first = nuevo;
+						last = first;
+
+					}else{
+						last->siguiente = nuevo;
+						last = nuevo;
+					}
 				}
+				pthread_mutex_unlock(&lock);
+			}else{
+				break;
 			}
-			i++;
 		}
-		pthread_mutex_lock(&res_lock);
-		temp_result = fopen("/tmp/mitempres","a");
-		if(temp_result == NULL )
-		{
-			printf("Error al abrir el archivo temporal \"mitempres\".\n");
-			return -1;
-		}
-		per++;
-		fprintf(temp_result,"%u %u\n",arg_len, cnt);
-		fclose(temp_result);
-
-		pthread_mutex_unlock(&res_lock);
-		arg_len--;
+		i++;
 	}
+	pthread_mutex_lock(&res_lock);
+
+	pthread_mutex_unlock(&res_lock);
 
 	return 0;
 }
@@ -247,87 +262,46 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 /*	Recoge las apariciones de la cadena y las manda a imprimir mediante la funcion printPos */
 int printOccur(unsigned int nums, char * str, void* file_mem)
 {
-	int read, count, temp, count_ant;
-	unsigned int main_num = 0;
-	unsigned int order = 0;
-	unsigned int pos;
-	FILE* tmp;
 	unsigned int len = strlen(str);
-
-	tmp = fopen("/tmp/mitempres","r");
-
 	printf("\n");
-	if(tmp == NULL )
-	{
-		printf("Error al abrir el archivo temporal.\n");
-		return -1;
-	}
 
 	while(len > 0)
 	{
-		count_ant = 0;
-		read = 0;
-		while(read != EOF)
-		{
-			read = fscanf(tmp,"%u",&temp);
-			if(temp == len)
-			{
-				read = fscanf(tmp,"%u",&count);
-				count_ant += count;
-			} else {
-				read = fscanf(tmp,"%*u");
-			}
-		}
-		fseek(tmp,0,SEEK_SET);
-		printf("Apariciones de %*.*s: %u \n", (int)strlen(str), len, str, count_ant);
-		if(len == strlen(str))
-		{
-			main_num = count_ant;
-		}
+
+		printf("Apariciones de %*.*s: %u \n", (int)strlen(str), len, str, *(found + len -1));
 		len--;
 	}
-	fclose(tmp);
-	unlink("/tmp/mitempres");
 
-	if(main_num >= 10)
-	{
-		printf("\nPresione ENTER para ver las apariciones de %s\n",lookforme);
-		getchar();
-	} else {
-		printf("\n");
-	}
-
-	tmp = fopen("/tmp/mitemps","r");
-	if(tmp == NULL )
-	{
-		printf("Error al abrir el archivo temporal.\n");
-		return -1;
-	}
-
-	read = 0;
-	while(read != EOF)
-	{
-		for(count = 0; count < 20; count++)
-		{
-			order++;
-			read = fscanf(tmp,"%u",&pos);
-			if(read != EOF)
-			{
-				printPos(order, pos, nums, strlen(str), file_mem );
-			} else {
-				break;
-			}
-		}
-		if(main_num >= 10)
-		{
-			getchar();
-		}
-
-	}
-
-	fclose(tmp);
-	unlink("/tmp/mitemps");
-	printf("\n");
+//	if(main_num >= 10)
+//	{
+//		printf("\nPresione ENTER para ver las apariciones de %s\n",lookforme);
+//		getchar();
+//	} else {
+//		printf("\n");
+//	}
+//
+//	read = 0;
+//	while(read != EOF)
+//	{
+//		for(count = 0; count < 20; count++)
+//		{
+//			order++;
+//			read = fscanf(tmp,"%u",&pos);
+//			if(read != EOF)
+//			{
+//				printPos(order, pos, nums, strlen(str), file_mem );
+//			} else {
+//				break;
+//			}
+//		}
+//		if(main_num >= 10)
+//		{
+//			getchar();
+//		}
+//
+//	}
+//
+//	printf("\n");
 	return 0;
 }
 
@@ -385,10 +359,6 @@ int cleanUp(void * file_mem)
 {
 	int tmp;
 
-	unlink("/tmp/mitemp");
-	unlink("/tmp/mitempres");
-	unlink("/tmp/mitemps");
-
 	tmp = munmap (file_mem, FILE_LENGTH);
 	if (tmp == -1)
 	{
@@ -400,6 +370,10 @@ int cleanUp(void * file_mem)
 	{
 		printf("Error al eliminar el semaforo.\n");
 	}
+
+	free(found);
+	free(first);
+	free(last);
 
 	return tmp;
 }
@@ -455,6 +429,38 @@ int semInit(void)
 	return semid;
 }
 
+int memSetUp(void)
+{
+	int tmp;
+
+	found = malloc( 10 * sizeof(unsigned int));
+	if(found == NULL)
+	{
+		printf("Error 1: Memoria insuficiente.\n");
+		return -1;
+	}
+	for(tmp = 0; tmp < strlen(lookforme); tmp++)
+	{
+		*(found + strlen(lookforme)) = 0;
+	}
+
+
+	first = (struct dato *) malloc(sizeof(struct dato));
+	if(first == NULL)
+	{
+		printf("Error 2: Memoria insuficiente.\n");
+		return -1;
+	}
+
+	last = (struct dato *) malloc(sizeof(struct dato));
+	if(last == NULL)
+	{
+		printf("Error 3: Memoria insuficiente.\n");
+		return -1;
+	}
+	return 0;
+}
+
 /*	Funcion ppal.	*/
 int main(int argc, char *argv[])
 {
@@ -462,7 +468,6 @@ int main(int argc, char *argv[])
 	signed	 int index		= 1;
 	unsigned int ctrl		= 0;
 	unsigned int N			= 10;
-	unsigned int per_ant	= 0;
 
 	/*	Variables de hilos	*/
 	static unsigned int thread_offset;
@@ -489,6 +494,12 @@ int main(int argc, char *argv[])
 
 	lookforme = argv[index];
 
+	ctrl = memSetUp();
+	if(ctrl != 0)
+	{
+		return -1;
+	}
+
 	fm = loadFileToMem();
 	if(fm == (void*) -1)	/*	ERROR DE CARGA	*/
 	{
@@ -503,7 +514,6 @@ int main(int argc, char *argv[])
 		ctrl = cleanUp(fm);
 		return -1;
 	}
-	per_ant = per;
 
 	printf("Listo.\n\n");
 	clock_gettime(CLOCK_MONOTONIC,&ts_int);
@@ -523,11 +533,7 @@ int main(int argc, char *argv[])
 	/*	Espero a que terminen los hilos.	*/
 	while( semctl(sem_id, 0, GETVAL) != T)
 	{
-		if(per != per_ant)
-		{
-			printf("Ejecutando búsqueda... %u%%\n", ( 100 * per / (T * (unsigned int) strlen(lookforme))));
-			per_ant = per;
-		}
+
 	}
 
 	sbuf.sem_op = -T;
@@ -543,7 +549,7 @@ int main(int argc, char *argv[])
 	printDiffTime(ts_int, ts_out, "de búsqueda");
 	printDiffTime(ts_in, ts_out, "Total      ");
 
-	ctrl = sortResults();
+	//ctrl = sortResults();
 	ctrl = printOccur(N, argv[index], fm);
 
 	/*----	Fin de Programa		----*/
