@@ -191,9 +191,7 @@ int printPos(unsigned int order, unsigned int pos, unsigned int nums, unsigned i
 }
 
 /*	Busca cadenas de texto en las direcciones de memoria de file_mem, a partir de
- *  offset y durante range iteraciones, guardando en archivos la ubicacion de cada
- *  aparicion. Finalmente guarda la cantidad de apariciones en otro archivo, y asi
- *   sucesivamente con las sub cadenas.	*/
+ *  offset y durante range iteraciones almacendando apariciones de cada subcadena posible	*/
 int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 {
 	signed	 int cmp;
@@ -257,7 +255,6 @@ int lookFor(char * str, void* file_mem, unsigned int offset, unsigned int range)
 
 		i++;
 	}
-
 	return 0;
 }
 
@@ -301,7 +298,7 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 	return 0;
 }
 
-/* Ordena las ubicaciones del archivo de apariciones numericamente	*/
+/* Ordena las apariciones de la cadena	*/
 int sortResults(void)
 {
 	struct dato * ind = NULL;
@@ -498,7 +495,6 @@ int main(int argc, char *argv[])
 	unsigned int N			= 10;
 	unsigned int per		= 0;
 	unsigned int per_ant	= 0;
-
 
 	/*	Variables de hilos	*/
 	static unsigned int thread_offset;
