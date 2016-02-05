@@ -274,7 +274,7 @@ int printOccur(unsigned int nums, char * str, void* file_mem)
 	}
 	printf("\n");
 
-	if((*(found + strlen(str) -1)) != 0)
+	if((*(found + strlen(str) - 1)) != 0)
 	{
 
 		if((*(found + strlen(str) -1)) > 20)
@@ -561,7 +561,7 @@ int main(int argc, char *argv[])
 	while( semctl(sem_id, 0, GETVAL) != T)
 	{
 		per = (unsigned int) ( (float)*(done) * T * 100 / FILE_LENGTH);
-		if(per > per_ant + 10 && per != 100)
+		if( ( per > (per_ant + 10) ) && (per != 100) )
 		{
 			printf("Ejecutando búsqueda... %u%%\n", per);
 			per_ant = per;
